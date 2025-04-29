@@ -9,9 +9,10 @@ const SocketHandler = (req, res) => {
   } else {
     console.log('Socket is initializing');
     // Adapt the server to Next.js HTTP server
+    // Use default path ('/socket.io/')
     const io = new Server(res.socket.server, {
-      path: '/api/socket_io', // Match client-side path
-      addTrailingSlash: false,
+      // path: '/api/socket_io', // REMOVED
+      addTrailingSlash: false, // Still potentially useful
     });
     // Attach io instance to the server object
     res.socket.server.io = io;
