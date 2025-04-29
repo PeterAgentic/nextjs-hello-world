@@ -3,6 +3,7 @@ import io from 'socket.io-client';
 // TensorFlow.js and COCO-SSD imports
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl'; // Register WebGL backend
+import '@tensorflow/tfjs-backend-cpu';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
 
 const ROOM_ID = 'chat-room'; // Must match server
@@ -321,16 +322,16 @@ const ChatPage = () => {
       {/* Video Grid */}
       <div className="grid grid-cols-3 w-screen h-screen">
         {/* Local Video */}
-        <div className="relative border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)] flex flex-col">
+        <div className="relative border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)]">
           <div className="absolute top-1 left-1 flex items-center space-x-2 z-10">
             <h2 className="bg-black bg-opacity-60 text-white text-xs px-1 rounded">You {isMuted ? '(Muted)' : ''}</h2>
           </div>
-          <video 
-            ref={localVideoRef} 
-            autoPlay 
-            playsInline 
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
             muted // Keep video muted locally to prevent echo
-            className="w-full flex-grow object-cover bg-black"
+            className="w-full h-full object-cover bg-black"
           ></video>
           {/* Detection Label Area */}
           <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-xs text-center p-1 truncate">
@@ -341,7 +342,7 @@ const ChatPage = () => {
         {/* Render remote videos */}
         {Object.entries(remoteStreams).map(([socketId, stream]) => (
           <div key={socketId} className="relative border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)]">
-             <h2 className="absolute top-1 left-1 bg-black bg-opacity-60 text-white text-xs px-1 rounded z-10">Peer {socketId.substring(0, 4)}</h2>
+            <h2 className="absolute top-1 left-1 bg-black bg-opacity-60 text-white text-xs px-1 rounded z-10">Peer {socketId.substring(0, 4)}</h2>
             <video
               ref={ref => {
                 if (ref && ref.srcObject !== stream) {
@@ -357,9 +358,9 @@ const ChatPage = () => {
         
         {/* Placeholder for empty slots */}
         {[...Array(Math.max(0, MAX_REMOTE_PEERS_DISPLAYED - Object.keys(remoteStreams).length))].map((_, i) => (
-           <div key={`placeholder-${i}`} className="bg-gray-800 flex items-center justify-center border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)]">
-             <span className="text-gray-500 text-sm">Waiting...</span>
-           </div>
+          <div key={`placeholder-${i}`} className="bg-gray-800 flex items-center justify-center border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)]">
+            <span className="text-gray-500 text-sm">Waiting...</span>
+          </div>
         ))}
       </div>
     </div>
