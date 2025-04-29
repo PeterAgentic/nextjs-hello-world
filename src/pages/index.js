@@ -31,6 +31,12 @@ export default function Home() {
         >
           Host a Game
         </button>
+        <button
+          onClick={() => router.push('/chat?room=PUBLIC')}
+          className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded shadow"
+        >
+          Join Public Game
+        </button>
         <form onSubmit={handleJoin} className="flex flex-col space-y-2">
           <input
             type="text"
