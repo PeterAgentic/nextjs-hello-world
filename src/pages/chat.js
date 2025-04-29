@@ -69,9 +69,11 @@ const ChatPage = () => {
 
   // Effect for Socket.IO connection and initial setup
   useEffect(() => {
-    // Connect ONLY to the NEXT.JS API ROUTE that initializes Socket.IO.
-    // The server-side path config should handle the rest.
-    const newSocket = io('/api/socket'); 
+    // Connect to the NEXT.JS API ROUTE and explicitly specify the path
+    // used by the Socket.IO engine on the server.
+    const newSocket = io('/api/socket', { 
+      path: '/api/socket_io' 
+    });
     setSocket(newSocket);
 
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
