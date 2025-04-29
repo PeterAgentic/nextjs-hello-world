@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 
 const ROOM_ID = 'chat-room'; // Must match server
+const MAX_REMOTE_PEERS_DISPLAYED = 8; // For a 3x3 grid (1 local + 8 remote)
+
 // Optional: Add STUN server configuration for better NAT traversal
 const iceServers = {
   iceServers: [
@@ -16,15 +18,7 @@ const ChatPage = () => {
   const [localStream, setLocalStream] = useState(null);
   const peerConnections = useRef({}); // Store peer connections { socketId: RTCPeerConnection }
   const [remoteStreams, setRemoteStreams] = useState({}); // Store remote streams { socketId: MediaStream }
-  const remoteVideoRefs = useRef({}); // Store refs for remote video elements { socketId: RefObject }
-
-  // Helper to get or create refs for remote videos
-  const getRemoteVideoRef = (socketId) => {
-    if (!remoteVideoRefs.current[socketId]) {
-      remoteVideoRefs.current[socketId] = React.createRef();
-    }
-    return remoteVideoRefs.current[socketId];
-  };
+  const [isMuted, setIsMuted] = useState(true); // Muted by default
 
   // Function to create a peer connection
   const createPeerConnection = useCallback((socketId) => {
@@ -67,6 +61,16 @@ const ChatPage = () => {
     }
   }, [socket, localStream]);
 
+  // --- Mute/Unmute Logic ---
+  const toggleMute = () => {
+    if (!localStream) return;
+
+    localStream.getAudioTracks().forEach((track) => {
+      track.enabled = !isMuted; // Enable if it was muted, disable if it was unmuted
+    });
+    setIsMuted(!isMuted);
+  };
+
   // Effect for Socket.IO connection and initial setup
   useEffect(() => {
     // Connect directly to the server; Socket.IO will use default path
@@ -75,7 +79,10 @@ const ChatPage = () => {
 
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then(stream => {
+        // Set initial mute state for the obtained stream
+        stream.getAudioTracks().forEach(track => track.enabled = !isMuted);
         setLocalStream(stream);
+
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
@@ -90,16 +97,19 @@ const ChatPage = () => {
     return () => {
       console.log('Cleaning up: disconnecting socket and stopping stream');
       if (newSocket) newSocket.disconnect();
+      // No need to manually stop tracks here, new cleanup logic handles it
+
+      // Close all peer connections and stop local stream on cleanup
+      Object.values(peerConnections.current).forEach(pc => pc.close());
+      peerConnections.current = {};
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
-      // Close all peer connections on cleanup
-      Object.values(peerConnections.current).forEach(pc => pc.close());
-      peerConnections.current = {};
+      setLocalStream(null); // Clear local stream state
     };
-    // localStream is intentionally omitted from deps here to avoid re-running on stream change
+    // isMuted is added to deps to correctly set initial state, but won't cause reconnects
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isMuted]); // isMuted dependency is only needed for initial setup
 
   // Effect for handling Socket.IO events
   useEffect(() => {
@@ -187,8 +197,6 @@ const ChatPage = () => {
         delete newState[socketId];
         return newState;
       });
-      // Clean up video refs if needed
-      delete remoteVideoRefs.current[socketId];
     });
 
     // --- Cleanup Socket Listeners ---
@@ -204,36 +212,54 @@ const ChatPage = () => {
   }, [socket, localStream, createPeerConnection]);
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">WebRTC Chat Room (Room: {ROOM_ID})</h1>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">You</h2>
-          <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-auto bg-black rounded shadow"></video>
+    <div className="min-h-screen bg-gray-900">
+      <h1 className="text-xl font-bold text-white p-2 text-center">WebRTC Chat Room (Room: {ROOM_ID})</h1>
+      
+      {/* Controls Area - positioned absolutely or differently if needed */}
+      <div className="absolute top-2 left-2 z-20">
+        <button 
+          onClick={toggleMute} 
+          className={`px-3 py-1 rounded font-semibold text-white text-sm ${isMuted ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
+        >
+          {isMuted ? 'Unmute' : 'Mute'}
+        </button>
+      </div>
+
+      {/* Video Grid */}
+      <div className="grid grid-cols-3 w-screen h-screen">
+        {/* Local Video */}
+        <div className="relative border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)]">
+          <h2 className="absolute top-1 left-1 bg-black bg-opacity-60 text-white text-xs px-1 rounded z-10">You {isMuted ? '(Muted)' : ''}</h2>
+          <video 
+            ref={localVideoRef} 
+            autoPlay 
+            playsInline 
+            muted // Keep video muted locally to prevent echo
+            className="w-full h-full object-cover bg-black"
+          ></video>
         </div>
+        
         {/* Render remote videos */}
         {Object.entries(remoteStreams).map(([socketId, stream]) => (
-          <div key={socketId}>
-            <h2 className="text-lg font-semibold">Peer {socketId.substring(0, 6)}</h2>
+          <div key={socketId} className="relative border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)]">
+             <h2 className="absolute top-1 left-1 bg-black bg-opacity-60 text-white text-xs px-1 rounded z-10">Peer {socketId.substring(0, 4)}</h2>
             <video
               ref={ref => {
-                // Assign stream to video element when ref is available
-                if (ref) {
+                if (ref && ref.srcObject !== stream) {
                   ref.srcObject = stream;
                 }
-                // Store the ref itself if needed, although direct srcObject assignment often suffices
-                // remoteVideoRefs.current[socketId] = ref;
               }}
               autoPlay
               playsInline
-              className="w-full h-auto bg-black rounded shadow"
+              className="w-full h-full object-cover bg-black"
             ></video>
           </div>
         ))}
-        {/* Placeholder for empty slots if needed */}
-        {[...Array(Math.max(0, 3 - Object.keys(remoteStreams).length))].map((_, i) => (
-           <div key={`placeholder-${i}`} className="bg-gray-200 p-2 rounded flex items-center justify-center aspect-video">
-             <span className="text-gray-500">Waiting for peer...</span>
+        
+        {/* Placeholder for empty slots */}
+        {[...Array(Math.max(0, MAX_REMOTE_PEERS_DISPLAYED - Object.keys(remoteStreams).length))].map((_, i) => (
+           <div key={`placeholder-${i}`} className="bg-gray-800 flex items-center justify-center border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)]">
+             <span className="text-gray-500 text-sm">Waiting...</span>
            </div>
         ))}
       </div>
