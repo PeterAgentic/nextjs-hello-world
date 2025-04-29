@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import io from 'socket.io-client';
+// TensorFlow.js and COCO-SSD imports
+import * as tf from '@tensorflow/tfjs-core';
+import '@tensorflow/tfjs-backend-webgl'; // Register WebGL backend
+import * as cocoSsd from '@tensorflow-models/coco-ssd';
 
 const ROOM_ID = 'chat-room'; // Must match server
 const MAX_REMOTE_PEERS_DISPLAYED = 8; // For a 3x3 grid (1 local + 8 remote)
@@ -12,6 +16,10 @@ const iceServers = {
   ],
 };
 
+// --- TensorFlow.js Configuration ---
+const DETECTION_INTERVAL_MS = 500; // How often to run detection (milliseconds)
+const CONFIDENCE_THRESHOLD = 0.6; // Minimum confidence score to display a label
+
 const ChatPage = () => {
   const localVideoRef = useRef(null);
   const [socket, setSocket] = useState(null);
@@ -19,6 +27,85 @@ const ChatPage = () => {
   const peerConnections = useRef({}); // Store peer connections { socketId: RTCPeerConnection }
   const [remoteStreams, setRemoteStreams] = useState({}); // Store remote streams { socketId: MediaStream }
   const [isMuted, setIsMuted] = useState(true); // Muted by default
+
+  // --- TFJS State ---
+  const [objectDetectionModel, setObjectDetectionModel] = useState(null);
+  const [detectedObjectLabel, setDetectedObjectLabel] = useState('Loading model...');
+  const detectionIntervalRef = useRef(null); // Ref to store the interval ID
+
+  // --- Load TFJS Model ---
+  useEffect(() => {
+    const loadModel = async () => {
+      try {
+        setDetectedObjectLabel('Setting up TFJS backend...');
+        await tf.setBackend('webgl');
+        await tf.ready(); // Ensure backend is ready
+        setDetectedObjectLabel('Loading COCO-SSD model...');
+        const model = await cocoSsd.load();
+        setObjectDetectionModel(model);
+        setDetectedObjectLabel('Model loaded. Starting detection...');
+        console.log('COCO-SSD model loaded successfully.');
+      } catch (error) {
+        console.error('Error loading TensorFlow.js model:', error);
+        setDetectedObjectLabel('Error loading model.');
+      }
+    };
+    loadModel();
+  }, []);
+
+  // --- Object Detection Loop ---
+  const runObjectDetection = useCallback(async () => {
+    if (!objectDetectionModel || !localVideoRef.current || localVideoRef.current.readyState < 2) {
+      // Model or video not ready
+      return;
+    }
+
+    try {
+      const video = localVideoRef.current;
+      const predictions = await objectDetectionModel.detect(video);
+
+      let highestConfidenceLabel = 'No object detected';
+      let highestScore = 0;
+
+      if (predictions.length > 0) {
+        predictions.forEach(prediction => {
+          if (prediction.score > CONFIDENCE_THRESHOLD && prediction.score > highestScore) {
+            highestScore = prediction.score;
+            highestConfidenceLabel = `${prediction.class} (${Math.round(prediction.score * 100)}%)`;
+          }
+        });
+      }
+      setDetectedObjectLabel(highestConfidenceLabel);
+
+    } catch (error) {
+      // TFJS might throw errors if the video element state is weird
+      console.warn('Detection failed (might be temporary): ', error);
+    }
+  }, [objectDetectionModel]);
+
+  // --- Start/Stop Detection Interval ---
+  useEffect(() => {
+    if (objectDetectionModel && localStream) {
+      // Start detection loop only when model and stream are ready
+      detectionIntervalRef.current = setInterval(runObjectDetection, DETECTION_INTERVAL_MS);
+      console.log('Started detection interval');
+    } else {
+      // Clear interval if model or stream becomes unavailable
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+        detectionIntervalRef.current = null;
+        console.log('Cleared detection interval');
+      }
+    }
+
+    // Cleanup interval on component unmount or when dependencies change
+    return () => {
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+        console.log('Cleaned up detection interval on unmount/deps change');
+      }
+    };
+  }, [objectDetectionModel, localStream, runObjectDetection]);
 
   // Function to create a peer connection
   const createPeerConnection = useCallback((socketId) => {
@@ -106,10 +193,16 @@ const ChatPage = () => {
         localStream.getTracks().forEach(track => track.stop());
       }
       setLocalStream(null); // Clear local stream state
+
+      // Clear TFJS detection interval on full cleanup
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+        console.log('Cleaned up detection interval on full unmount');
+      }
     };
-    // isMuted is added to deps to correctly set initial state, but won't cause reconnects
+    // isMuted dependency is only needed for initial setup
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMuted]); // isMuted dependency is only needed for initial setup
+  }, [isMuted]);
 
   // Effect for handling Socket.IO events
   useEffect(() => {
@@ -228,15 +321,21 @@ const ChatPage = () => {
       {/* Video Grid */}
       <div className="grid grid-cols-3 w-screen h-screen">
         {/* Local Video */}
-        <div className="relative border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)]">
-          <h2 className="absolute top-1 left-1 bg-black bg-opacity-60 text-white text-xs px-1 rounded z-10">You {isMuted ? '(Muted)' : ''}</h2>
+        <div className="relative border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)] flex flex-col">
+          <div className="absolute top-1 left-1 flex items-center space-x-2 z-10">
+            <h2 className="bg-black bg-opacity-60 text-white text-xs px-1 rounded">You {isMuted ? '(Muted)' : ''}</h2>
+          </div>
           <video 
             ref={localVideoRef} 
             autoPlay 
             playsInline 
             muted // Keep video muted locally to prevent echo
-            className="w-full h-full object-cover bg-black"
+            className="w-full flex-grow object-cover bg-black"
           ></video>
+          {/* Detection Label Area */}
+          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-xs text-center p-1 truncate">
+            {detectedObjectLabel}
+          </div>
         </div>
         
         {/* Render remote videos */}
