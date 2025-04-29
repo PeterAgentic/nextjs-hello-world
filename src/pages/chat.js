@@ -307,7 +307,7 @@ const ChatPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <h1 className="text-xl font-bold text-white p-2 text-center">WebRTC Chat Room (Room: {ROOM_ID})</h1>
+      <h1 className="text-xl font-bold text-white p-2 text-center">Rush Roulette</h1>
       
       {/* Controls Area - positioned absolutely or differently if needed */}
       <div className="absolute top-2 left-2 z-20">
