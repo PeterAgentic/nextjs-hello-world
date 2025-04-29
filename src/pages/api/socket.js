@@ -11,8 +11,12 @@ const SocketHandler = (req, res) => {
     // Adapt the server to Next.js HTTP server
     // Use default path ('/socket.io/')
     const io = new Server(res.socket.server, {
-      // path: '/api/socket_io', // REMOVED
+      path: '/api/socket_io', // Re-add explicit path
       addTrailingSlash: false, // Still potentially useful
+      cors: {
+        origin: "*", // Allow connections from any origin (adjust for production)
+        methods: ["GET", "POST"]
+      }
     });
     // Attach io instance to the server object
     res.socket.server.io = io;
