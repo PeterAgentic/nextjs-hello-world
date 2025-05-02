@@ -22,37 +22,45 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
-      <h1 className="text-3xl font-bold mb-8">Rush Roulette</h1>
-      <div className="flex flex-col space-y-6 w-full max-w-xs">
-        <button
-          onClick={handleHost}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow"
-        >
-          Host a Game
-        </button>
-        <button
-          onClick={() => router.push('/chat?room=PUBLIC')}
-          className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded shadow"
-        >
-          Join Public Game
-        </button>
-        <form onSubmit={handleJoin} className="flex flex-col space-y-2">
-          <input
-            type="text"
-            placeholder="Enter Room Code"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value)}
-            className="rounded px-3 py-2 bg-white text-gray-900 border border-gray-400 shadow focus:outline-none placeholder-gray-600"
-            maxLength={8}
-          />
+    <div className="min-h-screen flex items-center justify-center bg-[#111118]">
+      <div className="rounded-3xl p-10 w-full max-w-md flex flex-col items-center shadow-2xl" style={{ boxShadow: '0 0 40px 10px #ff2d55, 0 0 0 4px #222 inset' }}>
+        <h1 className="text-4xl md:text-5xl font-extrabold mb-8 text-center text-[#ff2d55]" style={{ textShadow: '0 0 16px #ff2d55, 0 0 32px #ff2d55' }}>
+          Rush Roulette
+        </h1>
+        <div className="flex flex-col space-y-6 w-full">
           <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow"
+            onClick={handleHost}
+            className="bg-[#ff2d55] hover:bg-[#ff4d75] text-white font-semibold py-3 px-4 rounded-lg shadow transition-all duration-200 text-lg focus:outline-none focus:ring-2 focus:ring-[#ff2d55] focus:ring-offset-2"
           >
-            Join a Game
+            Host a Game
           </button>
-        </form>
+          <button
+            onClick={() => router.push('/chat?room=PUBLIC')}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-4 rounded-lg shadow transition-all duration-200 text-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+          >
+            Join Public Game
+          </button>
+          <form onSubmit={handleJoin} className="flex flex-col space-y-2">
+            <input
+              type="text"
+              placeholder="Enter Room Code"
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value)}
+              className="rounded-lg px-4 py-3 bg-[#222] text-gray-200 border-2 border-[#ff2d55] focus:border-[#ff2d55] focus:ring-2 focus:ring-[#ff2d55] placeholder-gray-400 text-lg shadow"
+              maxLength={8}
+            />
+            <button
+              type="submit"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow transition-all duration-200 text-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2"
+            >
+              Join a Game
+            </button>
+          </form>
+        </div>
+        <p className="mt-8 text-gray-300 text-center text-base">
+          Race against other players to find items in your home!<br />
+          Be the fastest to locate objects and climb the leaderboard.
+        </p>
       </div>
     </div>
   );
