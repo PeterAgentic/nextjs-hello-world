@@ -311,10 +311,10 @@ const ChatPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <div className="flex items-center justify-between px-4">
+      <div className="relative flex items-center justify-between px-4" style={{height: '48px'}}>
         <div></div>
-        <h1 className="text-xl font-bold text-white p-2 text-center flex-1">Rush Roulette</h1>
-        <div className="text-white font-mono text-base px-3 py-1 rounded-lg" style={{background: 'transparent', minWidth: '120px', textAlign: 'right'}}>
+        <h1 className="absolute left-1/2 transform -translate-x-1/2 text-xl font-bold text-white p-2 text-center">Rush Roulette</h1>
+        <div className="text-white font-mono text-base px-3 py-1 rounded-lg" style={{background: 'transparent', minWidth: '120px', textAlign: 'right', position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)'}}>
           CODE: {roomCode.toString().toUpperCase()}
         </div>
       </div>
