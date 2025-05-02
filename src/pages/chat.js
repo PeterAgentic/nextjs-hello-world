@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import io from 'socket.io-client';
+import { useRouter } from 'next/router';
 // TensorFlow.js and COCO-SSD imports
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl'; // Register WebGL backend
@@ -33,6 +34,9 @@ const ChatPage = () => {
   const [objectDetectionModel, setObjectDetectionModel] = useState(null);
   const [detectedObjectLabel, setDetectedObjectLabel] = useState('Loading model...');
   const detectionIntervalRef = useRef(null); // Ref to store the interval ID
+
+  const router = useRouter();
+  const roomCode = router.query.room || 'chat-room';
 
   // --- Load TFJS Model ---
   useEffect(() => {
@@ -307,7 +311,13 @@ const ChatPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <h1 className="text-xl font-bold text-white p-2 text-center">Rush Roulette</h1>
+      <div className="flex items-center justify-between px-4">
+        <div></div>
+        <h1 className="text-xl font-bold text-white p-2 text-center flex-1">Rush Roulette</h1>
+        <div className="text-white font-mono text-base px-3 py-1 rounded-lg" style={{background: 'transparent', minWidth: '120px', textAlign: 'right'}}>
+          CODE: {roomCode.toString().toUpperCase()}
+        </div>
+      </div>
       
       {/* Controls Area - positioned absolutely or differently if needed */}
       <div className="absolute top-2 left-2 z-20">
