@@ -11,6 +11,7 @@
     "@tensorflow/tfjs-backend-webgl": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
+    "firebase": "^11.7.1",
     "next": "^15.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
