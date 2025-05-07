@@ -79,6 +79,11 @@ app.prepare().then(() => {
       io.to(payload.to).emit('get-ice-candidate', { candidate: payload.candidate, from: socket.id });
     });
 
+    socket.on('timer-action', ({ room, action, timer }) => {
+      // Broadcast to everyone in the room except sender
+      socket.to(room).emit('timer-action', { action, timer });
+    });
+
     socket.on('disconnect', () => {
       console.log(`<<< Socket disconnected: ${socket.id}`);
       io.to(ROOM_ID).emit('user-left', socket.id);

@@ -43,6 +43,13 @@ const ChatPage = () => {
   const timerInterval = useRef(null);
   const [isHost, setIsHost] = useState(false);
 
+  // --- Timer Sync Helper ---
+  const emitTimerAction = (action, newTimer = timer) => {
+    if (isHost && socket) {
+      socket.emit('timer-action', { room: ROOM_ID, action, timer: newTimer });
+    }
+  };
+
   // --- Load TFJS Model ---
   useEffect(() => {
     const loadModel = async () => {
@@ -332,11 +339,56 @@ const ChatPage = () => {
     return () => clearInterval(timerInterval.current);
   }, [timerRunning]);
 
-  const handleStart = () => setTimerRunning(true);
-  const handleStop = () => setTimerRunning(false);
-  const handleReset = () => setTimer(30);
-  const handleAdd = () => setTimer(t => t + 5);
-  const handleSubtract = () => setTimer(t => (t > 5 ? t - 5 : 0));
+  const handleStart = () => {
+    setTimerRunning(true);
+    emitTimerAction('start');
+  };
+  const handleStop = () => {
+    setTimerRunning(false);
+    emitTimerAction('stop');
+  };
+  const handleReset = () => {
+    setTimer(30);
+    emitTimerAction('reset', 30);
+  };
+  const handleAdd = () => {
+    setTimer(t => {
+      const newT = t + 5;
+      emitTimerAction('add', newT);
+      return newT;
+    });
+  };
+  const handleSubtract = () => {
+    setTimer(t => {
+      const newT = t > 5 ? t - 5 : 0;
+      emitTimerAction('subtract', newT);
+      return newT;
+    });
+  };
+
+  // Timer sync: listen for timer-action events from server
+  useEffect(() => {
+    if (!socket) return;
+    const handler = ({ action, timer: newTimer }) => {
+      switch (action) {
+        case 'start':
+          setTimerRunning(true);
+          break;
+        case 'stop':
+          setTimerRunning(false);
+          break;
+        case 'reset':
+        case 'add':
+        case 'subtract':
+          setTimer(newTimer);
+          break;
+        default:
+          break;
+      }
+    };
+    socket.on('timer-action', handler);
+    return () => socket.off('timer-action', handler);
+  }, [socket]);
 
   return (
     <div className="min-h-screen bg-gray-900">
