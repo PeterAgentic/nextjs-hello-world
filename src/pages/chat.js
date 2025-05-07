@@ -171,7 +171,7 @@ const ChatPage = () => {
   // Effect for Socket.IO connection and initial setup
   useEffect(() => {
     // Connect directly to the server; Socket.IO will use default path
-    const newSocket = io('http://localhost:3001');
+    const newSocket = io();
     setSocket(newSocket);
 
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
