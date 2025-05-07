@@ -38,6 +38,11 @@ const ChatPage = () => {
   const router = useRouter();
   const roomCode = router.query.room || 'chat-room';
 
+  const [timer, setTimer] = useState(30); // default 30 seconds
+  const [timerRunning, setTimerRunning] = useState(false);
+  const timerInterval = useRef(null);
+  const [isHost, setIsHost] = useState(false);
+
   // --- Load TFJS Model ---
   useEffect(() => {
     const loadModel = async () => {
@@ -166,7 +171,7 @@ const ChatPage = () => {
   // Effect for Socket.IO connection and initial setup
   useEffect(() => {
     // Connect directly to the server; Socket.IO will use default path
-    const newSocket = io();
+    const newSocket = io('http://localhost:3001');
     setSocket(newSocket);
 
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
@@ -215,6 +220,12 @@ const ChatPage = () => {
 
     // --- Socket Event Handlers ---
     socket.on('all-users', (allUserIds) => {
+      console.log('socket.id:', socket.id, 'allUserIds:', allUserIds);
+      if (socket.id && allUserIds.length > 0 && allUserIds[0] === socket.id) {
+        setIsHost(true);
+      } else {
+        setIsHost(false);
+      }
       console.log('Received all-users:', allUserIds);
       allUserIds.forEach(socketId => {
         if (!peerConnections.current[socketId]) {
@@ -309,6 +320,24 @@ const ChatPage = () => {
 
   }, [socket, localStream, createPeerConnection]);
 
+  // Timer logic
+  useEffect(() => {
+    if (timerRunning && timer > 0) {
+      timerInterval.current = setInterval(() => {
+        setTimer(t => (t > 0 ? t - 1 : 0));
+      }, 1000);
+    } else {
+      clearInterval(timerInterval.current);
+    }
+    return () => clearInterval(timerInterval.current);
+  }, [timerRunning]);
+
+  const handleStart = () => setTimerRunning(true);
+  const handleStop = () => setTimerRunning(false);
+  const handleReset = () => setTimer(30);
+  const handleAdd = () => setTimer(t => t + 5);
+  const handleSubtract = () => setTimer(t => (t > 5 ? t - 5 : 0));
+
   return (
     <div className="min-h-screen bg-gray-900">
       <div className="relative flex items-center justify-between px-4" style={{height: '48px'}}>
@@ -316,6 +345,21 @@ const ChatPage = () => {
         <h1 className="absolute left-1/2 transform -translate-x-1/2 text-xl font-bold text-white p-2 text-center">Rush Roulette</h1>
         <div className="text-white font-mono text-base px-3 py-1 rounded-lg" style={{background: 'transparent', minWidth: '120px', textAlign: 'right', position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)'}}>
           CODE: {roomCode.toString().toUpperCase()}
+        </div>
+      </div>
+      
+      {/* Timer Overlay */}
+      <div className="w-full flex flex-col items-center mt-2 mb-2" style={{position: 'relative', zIndex: 10}}>
+        <div className="text-5xl font-extrabold text-[#ff2d55] drop-shadow-lg" style={{textShadow: '0 0 16px #ff2d55, 0 0 32px #ff2d55'}}>
+          {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
+        </div>
+        {/* Always show timer controls */}
+        <div className="flex space-x-2 mt-2">
+          <button onClick={handleStart} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">Start</button>
+          <button onClick={handleStop} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">Stop</button>
+          <button onClick={handleReset} className="bg-gray-700 hover:bg-gray-800 text-white px-3 py-1 rounded">Reset</button>
+          <button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded">+5s</button>
+          <button onClick={handleSubtract} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">-5s</button>
         </div>
       </div>
       
