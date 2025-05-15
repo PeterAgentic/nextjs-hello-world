@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 // import { getAnalytics } from "firebase/analytics"; // Not needed for auth, and can cause issues in SSR
 
 const firebaseConfig = {
@@ -12,10 +13,12 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 // Only initialize analytics in the browser
 // let analytics;
 // if (typeof window !== 'undefined') {
 //   analytics = getAnalytics(app);
 // }
 
-export default app; 
+export default app;
+export { db }; 
