@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import app from '../firebase';
 
 function generateRoomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -7,7 +9,21 @@ function generateRoomCode() {
 
 export default function Home() {
   const [joinCode, setJoinCode] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setLoading(false);
+      if (!firebaseUser) {
+        router.replace('/signup');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const handleHost = () => {
     const code = generateRoomCode();
@@ -20,6 +36,9 @@ export default function Home() {
       router.push(`/chat?room=${joinCode.trim().toUpperCase()}`);
     }
   };
+
+  if (loading) return null;
+  if (!user) return null; // Will redirect to /signup
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#111118]">
