@@ -6,6 +6,8 @@ import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl'; // Register WebGL backend
 import '@tensorflow/tfjs-backend-cpu';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import app from '../firebase';
 
 const ROOM_ID = 'chat-room'; // Must match server
 const MAX_REMOTE_PEERS_DISPLAYED = 8; // For a 3x3 grid (1 local + 8 remote)
@@ -42,6 +44,7 @@ const ChatPage = () => {
   const [timerRunning, setTimerRunning] = useState(false);
   const timerInterval = useRef(null);
   const [isHost, setIsHost] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // --- Timer Sync Helper ---
   const emitTimerAction = (action, newTimer = timer) => {
@@ -390,6 +393,14 @@ const ChatPage = () => {
     return () => socket.off('timer-action', handler);
   }, [socket]);
 
+  useEffect(() => {
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setCurrentUser(firebaseUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-900">
       <div className="relative flex items-center justify-between px-4" style={{height: '48px'}}>
@@ -430,7 +441,9 @@ const ChatPage = () => {
         {/* Local Video */}
         <div className="relative border border-gray-700 w-[calc(100vw/3)] h-[calc(100vh/3)]">
           <div className="absolute top-1 left-1 flex items-center space-x-2 z-10">
-            <h2 className="bg-black bg-opacity-60 text-white text-xs px-1 rounded">You {isMuted ? '(Muted)' : ''}</h2>
+            <h2 className="bg-black bg-opacity-60 text-white text-xs px-1 rounded">
+              {currentUser ? currentUser.displayName : 'You'} {isMuted ? '(Muted)' : ''}
+            </h2>
           </div>
           <video
             ref={localVideoRef}
